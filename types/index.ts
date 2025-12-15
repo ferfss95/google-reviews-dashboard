@@ -112,12 +112,12 @@ export type CategoriaComentario =
 
 export interface Elogio {
   texto: string;
-  frequencia: number;
+  mencoes: number;
 }
 
 export interface Reclamacao {
   texto: string;
-  frequencia: number;
+  mencoes: number;
 }
 
 export interface AnaliseSentimentos {
