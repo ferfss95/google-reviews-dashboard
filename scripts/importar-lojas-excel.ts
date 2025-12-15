@@ -97,7 +97,7 @@ async function buscarLojaNoGoogleMaps(
     const response = await client.findPlaceFromText({
       params: {
         input: query,
-        inputtype: 'textquery',
+        inputtype: 'textquery' as any,
         fields: ['place_id', 'name', 'formatted_address', 'geometry'],
         key: apiKey,
       },
