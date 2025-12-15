@@ -35,5 +35,7 @@ next-env.d.ts
 
 # cache
 .cache/
-data/
+# data/ - removido para permitir que data/lojas.ts seja commitado
+# Mantém apenas backups fora do controle de versão
+data/*.backup.*.ts
 
