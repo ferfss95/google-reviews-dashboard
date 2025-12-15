@@ -8,6 +8,7 @@ import { formatarNomeLoja } from '@/lib/lojaUtils';
 
 interface AnaliseRegiaoProps {
   analise: AnaliseRegiao;
+  tipo?: 'regiao' | 'estado' | 'regional';
 }
 
 export default function AnaliseRegiaoComponent({ analise, tipo = 'regiao' }: AnaliseRegiaoProps) {
