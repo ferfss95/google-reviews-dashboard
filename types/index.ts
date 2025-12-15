@@ -100,3 +100,36 @@ export interface MapsPlaceDetails {
   reviews?: MapsReview[];
 }
 
+export type Sentimento = 'positivo' | 'neutro' | 'negativo';
+
+export type CategoriaComentario = 
+  | 'Atendimento' 
+  | 'Ambiente' 
+  | 'Tempo de Espera' 
+  | 'Produtos' 
+  | 'Preços' 
+  | 'Outros';
+
+export interface Elogio {
+  texto: string;
+  frequencia: number;
+}
+
+export interface Reclamacao {
+  texto: string;
+  frequencia: number;
+}
+
+export interface AnaliseSentimentos {
+  distribuicaoSentimentos: {
+    positivo: number;
+    neutro: number;
+    negativo: number;
+    total: number;
+  };
+  distribuicaoCategorias: { [key: string]: number };
+  principaisElogios: Elogio[];
+  principaisReclamacoes: Reclamacao[];
+  geradoEm: Date;
+}
+
