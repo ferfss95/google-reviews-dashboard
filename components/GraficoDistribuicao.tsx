@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Cell,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -89,7 +90,7 @@ export default function GraficoDistribuicao({
             {dadosOrdenados.map((entry, index) => {
               const nota = parseInt(entry.nota.split(' ')[0]);
               return (
-                <Bar.Cell 
+                <Cell 
                   key={`cell-${index}`} 
                   fill={cores[nota as keyof typeof cores]}
                 />

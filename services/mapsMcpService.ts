@@ -63,7 +63,7 @@ class GooglePlacesAPIClient implements MapsMCPClient {
           rating: review.rating || 0,
           relative_time_description: review.relative_time_description || '',
           text: review.text || '',
-          time: review.time || Math.floor(Date.now() / 1000),
+          time: typeof review.time === 'number' ? review.time : (typeof review.time === 'string' ? parseInt(review.time, 10) : Math.floor(Date.now() / 1000)),
         })) || [],
       };
     } catch (error: any) {

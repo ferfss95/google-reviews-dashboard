@@ -3,7 +3,8 @@
  * Preenche destaques, problemas e outros campos que requerem análise de texto
  */
 
-import type { Avaliacao, Loja, AnaliseRegiao } from './advancedAnalyticsService';
+import type { Avaliacao, Loja } from '@/types';
+import type { AnaliseRegiao } from './advancedAnalyticsService';
 import { analisarLojaProfundamente } from './lojaAnalysisService';
 
 /**
