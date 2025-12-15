@@ -263,11 +263,10 @@ function sincronizarLojas() {
             if (!lojaExcelEncontrada) {
               const nomeNorm = normalizarTexto(nomeLojaAtual);
               
-              // Tenta mapeamento manual primeiro
-              const mapeamentoManual = mapeamentosManuais[nomeNorm] || mapeamentosManuais[nomeNorm.replace(/\s/g, '')];
-              if (mapeamentoManual) {
-                const nomeMapeadoNorm = normalizarTexto(mapeamentoManual);
-                lojaExcelEncontrada = indicePorNomeNormalizado.get(nomeMapeadoNorm) || null;
+              // Tenta mapeamento direto primeiro (já foi tentado na Estratégia 0, mas tenta novamente com nome normalizado)
+              const codigoMapeado = mapeamentosDiretos[nomeLojaAtual];
+              if (codigoMapeado) {
+                lojaExcelEncontrada = indicePorCodigo.get(codigoMapeado) || null;
               }
               
               if (!lojaExcelEncontrada) {

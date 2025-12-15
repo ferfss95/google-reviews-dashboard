@@ -42,7 +42,7 @@ class GooglePlacesAPIClient implements MapsMCPClient {
             'user_ratings_total',
             'reviews',
           ],
-          language: 'pt-BR', // Português do Brasil
+          language: 'pt-BR' as any, // Português do Brasil
           key: this.apiKey,
         },
       });
