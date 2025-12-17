@@ -14,7 +14,7 @@ import type { MapsPlaceDetails, MapsReview, Avaliacao, Loja } from '@/types';
  * Interface para o cliente do Maps
  */
 interface MapsMCPClient {
-  getPlaceDetails(placeId: string): Promise<MapsPlaceDetails>;
+  getPlaceDetails(placeId: string, nomeLoja?: string): Promise<MapsPlaceDetails>;
 }
 
 /**
@@ -29,11 +29,134 @@ class GooglePlacesAPIClient implements MapsMCPClient {
     this.apiKey = apiKey;
   }
 
-  async getPlaceDetails(placeId: string): Promise<MapsPlaceDetails> {
+  /**
+   * Busca a loja Centauro dentro de um shopping
+   * Se o place_id for de um shopping, busca especificamente pela loja Centauro
+   */
+  private async buscarLojaCentauroNoShopping(placeIdShopping: string, nomeShopping?: string): Promise<string | null> {
     try {
-      const response = await this.client.placeDetails({
+      // Primeiro, obtém detalhes do shopping para ter o nome e localização
+      const shoppingDetails = await this.client.placeDetails({
+        params: {
+          place_id: placeIdShopping,
+          fields: ['name', 'geometry', 'formatted_address'],
+          key: this.apiKey,
+        },
+      });
+
+      const shopping = shoppingDetails.data.result;
+      const nomeShoppingParaBusca = nomeShopping || shopping.name || '';
+      
+      // Busca especificamente pela loja Centauro dentro/nearby do shopping
+      // Estratégia 1: Busca "Centauro" + nome do shopping
+      const query = `Centauro ${nomeShoppingParaBusca}`;
+      
+      const searchResponse = await this.client.findPlaceFromText({
+        params: {
+          input: query,
+          inputtype: 'textquery' as any,
+          fields: ['place_id', 'name', 'formatted_address', 'types'],
+          key: this.apiKey,
+        },
+      });
+
+      if (searchResponse.data.candidates && searchResponse.data.candidates.length > 0) {
+        // Filtra candidatos que são lojas (não shoppings) e contêm "Centauro" no nome
+        const lojaCentauro = searchResponse.data.candidates.find((candidate: any) => {
+          const nome = (candidate.name || '').toLowerCase();
+          const tipos = candidate.types || [];
+          // Deve conter "centauro" no nome e não ser um shopping center
+          return nome.includes('centauro') && 
+                 !tipos.includes('shopping_mall') && 
+                 !tipos.includes('establishment');
+        });
+
+        if (lojaCentauro) {
+          console.log(`✅ Encontrada loja Centauro: ${lojaCentauro.name} (${lojaCentauro.place_id})`);
+          return lojaCentauro.place_id;
+        }
+
+        // Se não encontrou filtrado, tenta o primeiro candidato que contenha "Centauro"
+        const candidatoComCentauro = searchResponse.data.candidates.find((c: any) => 
+          (c.name || '').toLowerCase().includes('centauro')
+        );
+        
+        if (candidatoComCentauro) {
+          console.log(`✅ Encontrada loja Centauro (fallback): ${candidatoComCentauro.name} (${candidatoComCentauro.place_id})`);
+          return candidatoComCentauro.place_id;
+        }
+      }
+
+      // Estratégia 2: Se tem geometria do shopping, busca nearby
+      if (shopping.geometry?.location) {
+        const nearbyResponse = await this.client.placesNearby({
+          params: {
+            location: {
+              lat: shopping.geometry.location.lat,
+              lng: shopping.geometry.location.lng,
+            },
+            radius: 500, // 500 metros
+            keyword: 'Centauro',
+            type: 'store',
+            key: this.apiKey,
+          },
+        });
+
+        if (nearbyResponse.data.results && nearbyResponse.data.results.length > 0) {
+          const lojaProxima = nearbyResponse.data.results.find((result: any) => {
+            const nome = (result.name || '').toLowerCase();
+            return nome.includes('centauro');
+          });
+
+          if (lojaProxima) {
+            console.log(`✅ Encontrada loja Centauro (nearby): ${lojaProxima.name} (${lojaProxima.place_id})`);
+            return lojaProxima.place_id;
+          }
+        }
+      }
+
+      console.warn(`⚠️ Não foi possível encontrar loja Centauro específica para ${nomeShoppingParaBusca}, usando place_id do shopping`);
+      return null;
+    } catch (error: any) {
+      console.warn(`⚠️ Erro ao buscar loja Centauro no shopping: ${error.message}`);
+      return null;
+    }
+  }
+
+  async getPlaceDetails(placeId: string, nomeLoja?: string): Promise<MapsPlaceDetails> {
+    try {
+      // Primeiro, verifica se o place_id é de um shopping
+      const initialResponse = await this.client.placeDetails({
         params: {
           place_id: placeId,
+          fields: ['name', 'types', 'place_id'],
+          key: this.apiKey,
+        },
+      });
+
+      const initialPlace = initialResponse.data.result;
+      const tipos = initialPlace.types || [];
+      const nomePlace = (initialPlace.name || '').toLowerCase();
+      // Detecta se é um shopping: tem tipo shopping_mall OU o nome contém "shopping" mas não "centauro"
+      const isShopping = tipos.includes('shopping_mall') || 
+                        (nomePlace.includes('shopping') && !nomePlace.includes('centauro'));
+      
+      // Se for um shopping, busca a loja Centauro específica
+      let placeIdFinal = placeId;
+      if (isShopping) {
+        console.log(`🏬 Place_id é de um shopping (${initialPlace.name}), buscando loja Centauro específica...`);
+        const lojaCentauroId = await this.buscarLojaCentauroNoShopping(placeId, nomeLoja || initialPlace.name);
+        if (lojaCentauroId) {
+          placeIdFinal = lojaCentauroId;
+        } else {
+          console.warn(`⚠️ Usando place_id do shopping como fallback (avaliações podem ser do shopping, não da loja)`);
+        }
+      }
+
+      // Busca detalhes completos do lugar (shopping ou loja Centauro)
+      const response = await this.client.placeDetails({
+        params: {
+          place_id: placeIdFinal,
           fields: [
             'place_id',
             'name',
@@ -50,7 +173,7 @@ class GooglePlacesAPIClient implements MapsMCPClient {
       const place = response.data.result;
 
       return {
-        place_id: place.place_id || placeId,
+        place_id: place.place_id || placeIdFinal,
         name: place.name,
         formatted_address: place.formatted_address,
         rating: place.rating,
@@ -79,7 +202,7 @@ class GooglePlacesAPIClient implements MapsMCPClient {
  * Cliente mock para desenvolvimento/teste (usado quando API key não está configurada)
  */
 class MockMapsMCPClient implements MapsMCPClient {
-  async getPlaceDetails(placeId: string): Promise<MapsPlaceDetails> {
+  async getPlaceDetails(placeId: string, nomeLoja?: string): Promise<MapsPlaceDetails> {
     console.warn(
       '⚠️ Usando cliente mock do Maps. Configure GOOGLE_MAPS_API_KEY para usar dados reais.'
     );
@@ -188,18 +311,19 @@ class MapsMCPService {
    */
   async getAvaliacoesFromPlace(
     placeId: string,
-    lojaId: string
+    lojaId: string,
+    nomeLoja?: string
   ): Promise<Avaliacao[]> {
-    const details = await this.getPlaceDetails(placeId);
+    const details = await this.getPlaceDetails(placeId, true, nomeLoja);
     
     if (!details.reviews || details.reviews.length === 0) {
       return [];
     }
 
     return details.reviews.map((review, index) => ({
-      id: `${placeId}-${review.time}-${index}`,
+      id: `${details.place_id}-${review.time}-${index}`,
       loja_id: lojaId,
-      place_id: placeId,
+      place_id: details.place_id, // Usa o place_id final (da loja Centauro, não do shopping)
       data: new Date(review.time * 1000),
       nota: review.rating as 1 | 2 | 3 | 4 | 5,
       comentario: review.text || undefined,
@@ -267,7 +391,8 @@ class MapsMCPService {
             setTimeout(() => reject(new Error('Timeout')), 10000)
           );
           
-          const avaliacoesPromise = this.getAvaliacoesFromPlace(loja.place_id, loja.id);
+          // Passa o nome da loja para buscar especificamente a loja Centauro dentro do shopping
+          const avaliacoesPromise = this.getAvaliacoesFromPlace(loja.place_id, loja.id, loja.nome);
           
           const avaliacoes = await Promise.race([avaliacoesPromise, timeoutPromise]);
           return avaliacoes;
