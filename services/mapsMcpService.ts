@@ -138,8 +138,12 @@ class GooglePlacesAPIClient implements MapsMCPClient {
       const tipos = initialPlace.types || [];
       const nomePlace = (initialPlace.name || '').toLowerCase();
       // Detecta se é um shopping: tem tipo shopping_mall OU o nome contém "shopping" mas não "centauro"
-      const isShopping = tipos.includes('shopping_mall') || 
-                        (nomePlace.includes('shopping') && !nomePlace.includes('centauro'));
+      // Também verifica se não é uma loja (store, clothing_store, shoe_store)
+      const isShopping = (tipos.includes('shopping_mall') || 
+                          (nomePlace.includes('shopping') && !nomePlace.includes('centauro'))) &&
+                         !tipos.includes('store') && 
+                         !tipos.includes('clothing_store') && 
+                         !tipos.includes('shoe_store');
       
       // Se for um shopping, busca a loja Centauro específica
       let placeIdFinal = placeId;
